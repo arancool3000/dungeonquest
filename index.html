@@ -662,62 +662,32 @@ var BOARD_QUESTS=[
 ];
 var CITIZEN_LINES=['Lovely day, isn\'t it?','Heard the arcade got a new high score.','Welcome, traveller.','Careful past the jungle — beasts about.','Off to the Harbour market later.','The lamplighter does good work at dusk.'];
 /* ── the long tale of Vel-Anor — a 15-chapter arc threaded through the world ── */
+/* One coherent thread — every beat points the same way: down, into the caves,
+   to the Lich. No contradictory side-errands. */
 var STORY=[
  {t:'Prologue · The Dimming',o:'Find Captain Aldra (⚔) in the square and hear what was stolen.',
-  l:['For a thousand years the Sun Crystal warmed the country of Vel-Anor, and no winter ever truly bit.','Then, on a moonless night, it was torn from its shrine, and a grey cold began to creep from the deep places of the earth.','Captain Aldra holds the square against the rising dark. She is looking, it seems, for someone willing to find out why.'],
+  l:['For a thousand years the Sun Crystal warmed the country of Vel-Anor, and no winter ever truly bit.','Then, on a moonless night, it was torn from its shrine, and a grey cold began to creep up from the deep places of the earth.','Captain Aldra holds the square against the rising dark — and she is looking for someone willing to go down and end it.'],
   done:function(){return G.flags&&G.flags.questMain>=1;}},
- {t:'Chapter I · The Desecrated Shrine',o:'Examine the shrine where the Sun Crystal was torn away.',
-  l:['"Before you swing a sword, use your eyes," Aldra says. "The Crystal was taken from its shrine, here in the square. Go and look. Tell me what you see."','Every hunt begins with a single honest look at the wound.'],
-  done:function(){return G.flags.found&&G.flags.found.shrine;}},
- {t:'Chapter II · Cold Steel',o:'Beasts crowd the square — cut down 10 to clear the way.',
-  l:['Claw-marks rake the altar, and now the things that left them press in from the fields, bold in the failing warmth.','Carve room to breathe. Put down ten of them before they put down the town.'],
-  done:function(){return (G.flags.totalKills||0)>=10;}},
- {t:'Chapter III · The Cold Trail',o:'Follow the frost-trail to the frozen tracks in the fields.',
-  l:['The cold leaves a trail a blind man could follow — snapped grass gone white, prints brimming with frost.','It runs out of the square and into the open country. Walk it, and see where the thief fled.'],
-  done:function(){return G.flags.found&&G.flags.found.tracks;}},
- {t:'Chapter IV · The Warden’s Stones',o:'Reach the standing stones and read the old wardens’ runes.',
-  l:['The trail climbs toward a ring of nine standing stones in the high fields, raised by wardens long dead.','They knew what sleeps below, and they bound it. Read what they carved — if the frost has spared it.'],
-  done:function(){return G.flags.found&&G.flags.found.stones;}},
- {t:'Chapter V · The Broken Ward',o:'The stones are guarded — cut down 24 of the cold’s beasts.',
-  l:['One stone is cracked clean through: the binding is broken, and that is how the dark reached up to steal the light.','Whatever shattered it left its hounds to keep the secret. Thin them — the dead keep no secrets from a drawn blade.'],
-  done:function(){return (G.flags.totalKills||0)>=24;}},
- {t:'Chapter VI · The Silent Tower',o:'Search the ruined watchtower for the enemy’s name.',
-  l:['Beyond the stones a watchtower stands empty, its bell long stilled.','A last warden died there with a message half-finished, gouged into the wall. Find it — a name is a weapon, if you live to use it.'],
-  done:function(){return G.flags.found&&G.flags.found.ruin;}},
- {t:'Chapter VII · The Long Road',o:'Carve the road toward the sea — 40 foes felled in all.',
-  l:['The name is KORVASH, and the warden’s last scratch points seaward. But the road south crawls with the risen dead.','Cut it open, mile by bloody mile, until you reach the salt.'],
-  done:function(){return (G.flags.totalKills||0)>=40;}},
- {t:'Chapter VIII · The Shore Wreck',o:'Investigate the wreck on the shore for the way down.',
-  l:['On the rocks lies a broken fishing boat, frost-locked, its crew lost chasing an island light.','Somewhere in that wreck is the last piece of the map. After it, there is only the dark below.'],
-  done:function(){return G.flags.found&&G.flags.found.wreck;}},
- {t:'Chapter IX · Into the Hollow',o:'Descend the cave mouth (▼) and take the hunt underground.',
-  l:['The chart is read, the name is known, the long road is walked. Only the descent remains.','Go down into the Hollow Caves, blade first, and do not look back.'],
+ {t:'Chapter I · Make Ready',o:'Gear up in town if you wish, then find the cave mouth (▼) and descend.',
+  l:['"The thing that took the Crystal went back the way it came — down, into the old cave mouth past the square," Aldra says. "That is your road."','Visit the smithy and the arcanist if you like. Then go down — everything that matters now lies below.'],
   done:function(){return G.flags.visited&&G.flags.visited.cave;}},
- {t:'Chapter X · The Bonefields',o:'Break the dead that throng the caves — 55 foes felled in all.',
-  l:['Korvash has set the long-dead to march, rank upon rank, and they do not tire as the living do.','Cut through bone and shadow toward the cold heart of it all.'],
-  done:function(){return (G.flags.totalKills||0)>=55;}},
- {t:'Chapter XI · The Deep Warren',o:'Carve into the second cave network — the Deep Warren.',
-  l:['A fouler air leads deeper still, into a warren the old maps forgot.','The chart promised a stair here, spiralling down past the bones of those who came before.'],
-  done:function(){return G.flags.visited&&G.flags.visited.cave2;}},
- {t:'Chapter XII · The Throne Beckons',o:'Find the deep stair down to the Throne of Korvash.',
-  l:['At the warren’s heart the cold has teeth. Far below, the Sun Crystal still pulses, its warmth fighting, faint and far.','Down, then — to the throne, and the thing that sits upon it.'],
+ {t:'Chapter II · The Bonefields',o:'Fight deeper into the Hollow Caves — cut down 20 of the risen dead.',
+  l:['The cold has set the long-dead marching, rank upon rank, and they do not tire as the living do.','Carve a path through bone and shadow toward the cold heart of the caves.'],
+  done:function(){return (G.flags.totalKills||0)>=20;}},
+ {t:'Chapter III · The Deep Stair',o:'Find the deep stair (▼) that spirals down to the Throne.',
+  l:['Far below, the Sun Crystal still pulses, its warmth fighting faint and far against the dark.','Somewhere in the deep is the stair to the throne — and the thing that sits upon it. Down, then.'],
   done:function(){return G.flags.visited&&G.flags.visited.lair;}},
- {t:'Chapter XIII · Korvash, the Lich King',o:'Destroy Korvash and reclaim the Sun Crystal.',
+ {t:'Chapter IV · Korvash, the Lich King',o:'Destroy Korvash the Lich King and reclaim the Sun Crystal.',
   l:['He waits on a throne of frost, the Crystal caged in his ribs like a captured star.','"You are warm," Korvash rasps, almost kindly. "I will fix that." Burn him out, hero of Vel-Anor.'],
   done:function(){return G.flags.won;}},
  {t:'Epilogue · Sunrise',o:'Vel-Anor is saved. Roam your country in the returning light.',
-  l:['The Crystal returns to its shrine, and dawn rolls back across the fields like a tide of gold.','The cold sinks away into the deep places, and in the square they are already singing your name — a long song, for a long hunt.','THE END — but the country is yours to wander. Thank you for playing Dungeon Quest 3D.'],
+  l:['The Crystal returns to its shrine, and dawn rolls back across the fields like a tide of gold.','The cold sinks away into the deep places, and in the square they are already singing your name.','THE END — but the country is yours to wander. Thank you for playing Dungeon Quest 3D.'],
   done:function(){return false;}}
 ];
-/* ── Investigation sites: real places to find and examine, woven through the war.
-   Positions are derived from known walkable landmarks and snapped to open ground. ── */
-var SITES=[
- {id:'shrine',chapter:1,ref:'aldra',dx:2,dy:2,name:'the desecrated shrine',lore:['Where the Sun Crystal once sat, only a scorched socket of stone remains, rimed with black frost that will not melt.','These are not a thief’s marks but a beast’s — deep claw-rakes across the altar. Whatever took the light came up from below, and it did not come alone.']},
- {id:'tracks',chapter:3,ref:'cave',dx:-4,dy:-4,name:'the frozen tracks',lore:['A trail of frost cuts the green field, each print brimming white like spilled milk that froze where it fell.','Something heavy dragged itself between the dark mouth in the earth and the high stones to the north. The trail is days old, but the cold keeps it fresh.']},
- {id:'stones',chapter:4,ref:'mountain',dx:2,dy:3,name:'the warden’s stones',lore:['Nine standing stones ring a frozen pool, each carved with a single watching eye. The old wardens raised them to bind what sleeps beneath Vel-Anor.','One stone is split clean through, its eye blinded. The binding is broken — this is the crack through which the dark reached up and stole the sun.']},
- {id:'ruin',chapter:6,ref:'harbor',dx:-3,dy:-3,name:'the silent watchtower',lore:['The watchtower has stood empty an age, its bell stilled, its stair choked with frost. The last warden died at his post.','Into the wall he gouged a final word before the cold took him: "KORVASH — he wears the Crystal in his ribs. Burn him out." A name, at last, for the enemy.']},
- {id:'wreck',chapter:8,ref:'harbor',dx:4,dy:5,name:'the shore wreck',lore:['A fishing boat lies broken on the rocks, frost-welded to the stone. Its crew rowed for the island light and were never seen again.','Wedged in the splintered hull is a waterlogged chart: the Hollow Caves, and beneath them a deep stair spiralling to a throne. The road down is set.']}
-];
+/* Investigation sites are retired — they pulled the player away from the one
+   downward thread and contradicted Aldra's guidance. The world stays open to
+   explore freely, but no side-quest marker competes with the main objective. */
+var SITES=[];
 function snapWalk(L,x,y){var bx=clamp(Math.round(x),1,L.W-2),by=clamp(Math.round(y),1,L.H-2),dx,dy;if(L.wall[by][bx]!==1)return {x:bx+0.5,y:by+0.5};for(var r=1;r<16;r++)for(dy=-r;dy<=r;dy++)for(dx=-r;dx<=r;dx++){var tx=bx+dx,ty=by+dy;if(tx<1||ty<1||tx>=L.W-1||ty>=L.H-1)continue;if(L.wall[ty][tx]!==1)return {x:tx+0.5,y:ty+0.5};}return {x:bx+0.5,y:by+0.5};}
 function setupSites(L){G.sitePos={};var refs={},i;for(i=0;i<L.portals.length;i++)refs[L.portals[i].to]={x:L.portals[i].x,y:L.portals[i].y};if(L.caveDown)refs.cave={x:L.caveDown.x,y:L.caveDown.y};for(i=0;i<G.npcs.length;i++)if(G.npcs[i].def&&G.npcs[i].def.action==='quest')refs.aldra={x:G.npcs[i].x,y:G.npcs[i].y};SITES.forEach(function(s){var r=refs[s.ref]||refs.aldra||{x:L.W*0.4,y:L.H*0.5};G.sitePos[s.id]=snapWalk(L,r.x+(s.dx||0),r.y+(s.dy||0));});syncSiteMarker();}
 function activeSite(){if(!G.flags||G.flags.story==null)return null;for(var i=0;i<SITES.length;i++){var s=SITES[i];if(s.chapter===G.flags.story&&!(G.flags.found&&G.flags.found[s.id]))return s;}return null;}
@@ -1666,13 +1636,10 @@ function goalPos(){var L=G.level;if(!L)return null;var s=(G.flags&&G.flags.story
     var ce=nearestEnemy(G.px,G.py,999);if(ce)return {x:ce.x,y:ce.y};
     if(L.caveUp)return {x:L.caveUp.x,y:L.caveUp.y};
     return null;}
-  /* the overworld: follow the current chapter to a place you can actually reach */
+  /* the overworld: one direction only — first to Aldra, then down the cave mouth */
   if(G.curKey==='world'){
     if(s<=0||!G.flags||!G.flags.questMain){for(i=0;i<G.npcs.length;i++){n=G.npcs[i];if(n.def&&n.def.action==='quest')return {x:n.x,y:n.y};}}
-    var asi=(typeof activeSite==='function')?activeSite():null;if(asi&&G.sitePos&&G.sitePos[asi.id])return G.sitePos[asi.id];  // investigation chapter → the site to examine
-    if(s===11){pp=portalPos(L,'cave2');if(pp&&!storyGate('cave2'))return pp;}
-    if(s>=9&&L.caveDown&&!caveDownLocked())return {x:L.caveDown.x,y:L.caveDown.y};
-    var we=nearestEnemy(G.px,G.py,999);if(we)return {x:we.x,y:we.y};   // war chapters → nearest foe
+    if(L.caveDown)return {x:L.caveDown.x,y:L.caveDown.y};   // quest accepted → head for the cave
     return null;}
   if(G.curKey==='harbor'){
     var he=nearestEnemy(G.px,G.py,999);if(he)return {x:he.x,y:he.y};
