@@ -256,7 +256,7 @@ var G={
   msgs:[], objective:'',
   time:0, paused:false, started:false,
   quality:1,            // 1=High (floor casting), 0=Fast
-  muted:false, volume:0.7,
+  muted:false, volume:0.7, musicOff:false,
   save:null,
   flags:{},             // world flags: doors opened, gates, quests, keys
   fps:60, _facc:0, _fct:0
@@ -282,6 +282,7 @@ function renderLog(){
    user gesture. SFX + a lookahead-scheduled adaptive music sequencer.
    ════════════════════════════════════════════════════════════════════ */
 var AC=null, MASTER=null, MUSGAIN=null, SFXGAIN=null, audioOK=false;
+var MUSIC_VOL=0.34;   // base music level — kept low so it underscores rather than nags
 function m2f(m){return 440*Math.pow(2,(m-69)/12);}
 
 function initAudio(){
@@ -290,7 +291,7 @@ function initAudio(){
     var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx)return;
     AC=new Ctx();
     MASTER=AC.createGain(); MASTER.gain.value=G.muted?0:G.volume; MASTER.connect(AC.destination);
-    MUSGAIN=AC.createGain(); MUSGAIN.gain.value=0.5; MUSGAIN.connect(MASTER);
+    MUSGAIN=AC.createGain(); MUSGAIN.gain.value=G.musicOff?0:MUSIC_VOL; MUSGAIN.connect(MASTER);
     SFXGAIN=AC.createGain(); SFXGAIN.gain.value=0.95; SFXGAIN.connect(MASTER);
     audioOK=true;
     startMusicClock();startAmbientClock();
@@ -298,6 +299,7 @@ function initAudio(){
 }
 function setVolume(v){G.volume=clamp(v,0,1);if(MASTER)MASTER.gain.value=G.muted?0:G.volume;}
 function setMuted(m){G.muted=m;if(MASTER)MASTER.gain.value=m?0:G.volume;}
+function setMusicMuted(m){G.musicOff=m;if(MUSGAIN)MUSGAIN.gain.value=m?0:MUSIC_VOL;}
 
 /* a single voice: osc -> gain(env) -> dest */
 function voice(freq,t0,dur,type,vol,dest,glide){
@@ -379,10 +381,10 @@ function startAmbientClock(){
 /* ── music: lookahead scheduler ── */
 var MUS={track:'none', bpm:96, step:0, next:0, timer:null};
 var TRACKS={
-  menu:   {bpm:80, root:57, scale:[0,3,5,7,10], bass:[0,0,5,5,3,3,-2,-2], lead:[12,10,7,10,12,15,14,12], pad:true, drums:false},
-  town:   {bpm:92, root:60, scale:[0,2,4,5,7,9,11], bass:[0,0,7,7,5,5,4,4], lead:[12,11,9,7,9,11,12,14], pad:true, drums:false},
-  dungeon:{bpm:84, root:50, scale:[0,2,3,5,7,8,10], bass:[0,0,0,3,0,0,-2,-2], lead:[0,3,7,3,0,-2,0,3], pad:true, drums:true},
-  boss:   {bpm:140,root:45, scale:[0,2,3,5,7,8,10], bass:[0,0,3,3,5,5,3,1], lead:[12,12,15,12,10,12,8,10], pad:false, drums:true}
+  menu:   {bpm:76, root:57, scale:[0,3,5,7,10], bass:[0,0,5,5,3,3,-2,-2], lead:[12,15,14,12,10,12,7,10,12,15,17,15,14,12,10,7], pad:true, drums:false},
+  town:   {bpm:88, root:60, scale:[0,2,4,5,7,9,11], bass:[0,0,7,7,5,5,4,4], lead:[12,14,16,14,12,11,9,7,9,11,12,14,16,17,16,14], pad:true, drums:false},
+  dungeon:{bpm:80, root:50, scale:[0,2,3,5,7,8,10], bass:[0,0,0,3,0,0,-2,-2], lead:[0,3,7,10,7,3,0,-2,0,3,5,7,8,7,5,3], pad:true, drums:true},
+  boss:   {bpm:132,root:45, scale:[0,2,3,5,7,8,10], bass:[0,0,3,3,5,5,3,1], lead:[12,15,12,10,12,8,10,12,15,17,15,12,10,8,7,5], pad:false, drums:true}
 };
 function setMusic(name){
   if(MUS.track===name)return;
@@ -399,13 +401,13 @@ function startMusicClock(){
     while(MUS.next<ahead){
       var t=MUS.next, s=MUS.step%16, bar=Math.floor(MUS.step/2)%8;
       // bass on every quarter
-      if(s%2===0){voice(m2f(tk.root+tk.bass[bar]-12),t,spb*1.9,'triangle',0.22,MUSGAIN);}
-      // lead motif on offbeats
-      if(tk.lead && (s%4===0||s%4===2)){var ln=tk.lead[(MUS.step)%tk.lead.length];voice(m2f(tk.root+ln),t,spb*1.4,'square',0.07,MUSGAIN);}
+      if(s%2===0){voice(m2f(tk.root+tk.bass[bar]-12),t,spb*1.9,'triangle',0.2,MUSGAIN);}
+      // lead: one flowing note per quarter, soft triangle, 16-note phrase (repeats only every 4 bars)
+      if(tk.lead && s%2===0){var ln=tk.lead[Math.floor(MUS.step/2)%tk.lead.length];voice(m2f(tk.root+ln),t,spb*1.7,'triangle',0.05,MUSGAIN);}
       // pad chord at bar starts
       if(tk.pad && s===0){[0,4,7].forEach(function(iv){voice(m2f(tk.root+iv),t,spb*7,'sine',0.05,MUSGAIN);});}
-      // drums
-      if(tk.drums){ if(s%4===0)noise(t,0.12,0.18,250); if(s%4===2)noise(t,0.05,0.12,6000); }
+      // drums — softened so they pulse rather than thump
+      if(tk.drums){ if(s%4===0)noise(t,0.1,0.12,250); if(s%4===2)noise(t,0.04,0.07,6000); }
       MUS.next+=spb; MUS.step++;
     }
   },25);
@@ -660,62 +662,32 @@ var BOARD_QUESTS=[
 ];
 var CITIZEN_LINES=['Lovely day, isn\'t it?','Heard the arcade got a new high score.','Welcome, traveller.','Careful past the jungle — beasts about.','Off to the Harbour market later.','The lamplighter does good work at dusk.'];
 /* ── the long tale of Vel-Anor — a 15-chapter arc threaded through the world ── */
+/* One coherent thread — every beat points the same way: down, into the caves,
+   to the Lich. No contradictory side-errands. */
 var STORY=[
  {t:'Prologue · The Dimming',o:'Find Captain Aldra (⚔) in the square and hear what was stolen.',
-  l:['For a thousand years the Sun Crystal warmed the country of Vel-Anor, and no winter ever truly bit.','Then, on a moonless night, it was torn from its shrine, and a grey cold began to creep from the deep places of the earth.','Captain Aldra holds the square against the rising dark. She is looking, it seems, for someone willing to find out why.'],
+  l:['For a thousand years the Sun Crystal warmed the country of Vel-Anor, and no winter ever truly bit.','Then, on a moonless night, it was torn from its shrine, and a grey cold began to creep up from the deep places of the earth.','Captain Aldra holds the square against the rising dark — and she is looking for someone willing to go down and end it.'],
   done:function(){return G.flags&&G.flags.questMain>=1;}},
- {t:'Chapter I · The Desecrated Shrine',o:'Examine the shrine where the Sun Crystal was torn away.',
-  l:['"Before you swing a sword, use your eyes," Aldra says. "The Crystal was taken from its shrine, here in the square. Go and look. Tell me what you see."','Every hunt begins with a single honest look at the wound.'],
-  done:function(){return G.flags.found&&G.flags.found.shrine;}},
- {t:'Chapter II · Cold Steel',o:'Beasts crowd the square — cut down 10 to clear the way.',
-  l:['Claw-marks rake the altar, and now the things that left them press in from the fields, bold in the failing warmth.','Carve room to breathe. Put down ten of them before they put down the town.'],
-  done:function(){return (G.flags.totalKills||0)>=10;}},
- {t:'Chapter III · The Cold Trail',o:'Follow the frost-trail to the frozen tracks in the fields.',
-  l:['The cold leaves a trail a blind man could follow — snapped grass gone white, prints brimming with frost.','It runs out of the square and into the open country. Walk it, and see where the thief fled.'],
-  done:function(){return G.flags.found&&G.flags.found.tracks;}},
- {t:'Chapter IV · The Warden’s Stones',o:'Reach the standing stones and read the old wardens’ runes.',
-  l:['The trail climbs toward a ring of nine standing stones in the high fields, raised by wardens long dead.','They knew what sleeps below, and they bound it. Read what they carved — if the frost has spared it.'],
-  done:function(){return G.flags.found&&G.flags.found.stones;}},
- {t:'Chapter V · The Broken Ward',o:'The stones are guarded — cut down 24 of the cold’s beasts.',
-  l:['One stone is cracked clean through: the binding is broken, and that is how the dark reached up to steal the light.','Whatever shattered it left its hounds to keep the secret. Thin them — the dead keep no secrets from a drawn blade.'],
-  done:function(){return (G.flags.totalKills||0)>=24;}},
- {t:'Chapter VI · The Silent Tower',o:'Search the ruined watchtower for the enemy’s name.',
-  l:['Beyond the stones a watchtower stands empty, its bell long stilled.','A last warden died there with a message half-finished, gouged into the wall. Find it — a name is a weapon, if you live to use it.'],
-  done:function(){return G.flags.found&&G.flags.found.ruin;}},
- {t:'Chapter VII · The Long Road',o:'Carve the road toward the sea — 40 foes felled in all.',
-  l:['The name is KORVASH, and the warden’s last scratch points seaward. But the road south crawls with the risen dead.','Cut it open, mile by bloody mile, until you reach the salt.'],
-  done:function(){return (G.flags.totalKills||0)>=40;}},
- {t:'Chapter VIII · The Shore Wreck',o:'Investigate the wreck on the shore for the way down.',
-  l:['On the rocks lies a broken fishing boat, frost-locked, its crew lost chasing an island light.','Somewhere in that wreck is the last piece of the map. After it, there is only the dark below.'],
-  done:function(){return G.flags.found&&G.flags.found.wreck;}},
- {t:'Chapter IX · Into the Hollow',o:'Descend the cave mouth (▼) and take the hunt underground.',
-  l:['The chart is read, the name is known, the long road is walked. Only the descent remains.','Go down into the Hollow Caves, blade first, and do not look back.'],
+ {t:'Chapter I · Make Ready',o:'Gear up in town if you wish, then find the cave mouth (▼) and descend.',
+  l:['"The thing that took the Crystal went back the way it came — down, into the old cave mouth past the square," Aldra says. "That is your road."','Visit the smithy and the arcanist if you like. Then go down — everything that matters now lies below.'],
   done:function(){return G.flags.visited&&G.flags.visited.cave;}},
- {t:'Chapter X · The Bonefields',o:'Break the dead that throng the caves — 55 foes felled in all.',
-  l:['Korvash has set the long-dead to march, rank upon rank, and they do not tire as the living do.','Cut through bone and shadow toward the cold heart of it all.'],
-  done:function(){return (G.flags.totalKills||0)>=55;}},
- {t:'Chapter XI · The Deep Warren',o:'Carve into the second cave network — the Deep Warren.',
-  l:['A fouler air leads deeper still, into a warren the old maps forgot.','The chart promised a stair here, spiralling down past the bones of those who came before.'],
-  done:function(){return G.flags.visited&&G.flags.visited.cave2;}},
- {t:'Chapter XII · The Throne Beckons',o:'Find the deep stair down to the Throne of Korvash.',
-  l:['At the warren’s heart the cold has teeth. Far below, the Sun Crystal still pulses, its warmth fighting, faint and far.','Down, then — to the throne, and the thing that sits upon it.'],
+ {t:'Chapter II · The Bonefields',o:'Fight deeper into the Hollow Caves — cut down 20 of the risen dead.',
+  l:['The cold has set the long-dead marching, rank upon rank, and they do not tire as the living do.','Carve a path through bone and shadow toward the cold heart of the caves.'],
+  done:function(){return (G.flags.totalKills||0)>=20;}},
+ {t:'Chapter III · The Deep Stair',o:'Find the deep stair (▼) that spirals down to the Throne.',
+  l:['Far below, the Sun Crystal still pulses, its warmth fighting faint and far against the dark.','Somewhere in the deep is the stair to the throne — and the thing that sits upon it. Down, then.'],
   done:function(){return G.flags.visited&&G.flags.visited.lair;}},
- {t:'Chapter XIII · Korvash, the Lich King',o:'Destroy Korvash and reclaim the Sun Crystal.',
+ {t:'Chapter IV · Korvash, the Lich King',o:'Destroy Korvash the Lich King and reclaim the Sun Crystal.',
   l:['He waits on a throne of frost, the Crystal caged in his ribs like a captured star.','"You are warm," Korvash rasps, almost kindly. "I will fix that." Burn him out, hero of Vel-Anor.'],
   done:function(){return G.flags.won;}},
  {t:'Epilogue · Sunrise',o:'Vel-Anor is saved. Roam your country in the returning light.',
-  l:['The Crystal returns to its shrine, and dawn rolls back across the fields like a tide of gold.','The cold sinks away into the deep places, and in the square they are already singing your name — a long song, for a long hunt.','THE END — but the country is yours to wander. Thank you for playing Dungeon Quest 3D.'],
+  l:['The Crystal returns to its shrine, and dawn rolls back across the fields like a tide of gold.','The cold sinks away into the deep places, and in the square they are already singing your name.','THE END — but the country is yours to wander. Thank you for playing Dungeon Quest 3D.'],
   done:function(){return false;}}
 ];
-/* ── Investigation sites: real places to find and examine, woven through the war.
-   Positions are derived from known walkable landmarks and snapped to open ground. ── */
-var SITES=[
- {id:'shrine',chapter:1,ref:'aldra',dx:2,dy:2,name:'the desecrated shrine',lore:['Where the Sun Crystal once sat, only a scorched socket of stone remains, rimed with black frost that will not melt.','These are not a thief’s marks but a beast’s — deep claw-rakes across the altar. Whatever took the light came up from below, and it did not come alone.']},
- {id:'tracks',chapter:3,ref:'cave',dx:-4,dy:-4,name:'the frozen tracks',lore:['A trail of frost cuts the green field, each print brimming white like spilled milk that froze where it fell.','Something heavy dragged itself between the dark mouth in the earth and the high stones to the north. The trail is days old, but the cold keeps it fresh.']},
- {id:'stones',chapter:4,ref:'mountain',dx:2,dy:3,name:'the warden’s stones',lore:['Nine standing stones ring a frozen pool, each carved with a single watching eye. The old wardens raised them to bind what sleeps beneath Vel-Anor.','One stone is split clean through, its eye blinded. The binding is broken — this is the crack through which the dark reached up and stole the sun.']},
- {id:'ruin',chapter:6,ref:'harbor',dx:-3,dy:-3,name:'the silent watchtower',lore:['The watchtower has stood empty an age, its bell stilled, its stair choked with frost. The last warden died at his post.','Into the wall he gouged a final word before the cold took him: "KORVASH — he wears the Crystal in his ribs. Burn him out." A name, at last, for the enemy.']},
- {id:'wreck',chapter:8,ref:'harbor',dx:4,dy:5,name:'the shore wreck',lore:['A fishing boat lies broken on the rocks, frost-welded to the stone. Its crew rowed for the island light and were never seen again.','Wedged in the splintered hull is a waterlogged chart: the Hollow Caves, and beneath them a deep stair spiralling to a throne. The road down is set.']}
-];
+/* Investigation sites are retired — they pulled the player away from the one
+   downward thread and contradicted Aldra's guidance. The world stays open to
+   explore freely, but no side-quest marker competes with the main objective. */
+var SITES=[];
 function snapWalk(L,x,y){var bx=clamp(Math.round(x),1,L.W-2),by=clamp(Math.round(y),1,L.H-2),dx,dy;if(L.wall[by][bx]!==1)return {x:bx+0.5,y:by+0.5};for(var r=1;r<16;r++)for(dy=-r;dy<=r;dy++)for(dx=-r;dx<=r;dx++){var tx=bx+dx,ty=by+dy;if(tx<1||ty<1||tx>=L.W-1||ty>=L.H-1)continue;if(L.wall[ty][tx]!==1)return {x:tx+0.5,y:ty+0.5};}return {x:bx+0.5,y:by+0.5};}
 function setupSites(L){G.sitePos={};var refs={},i;for(i=0;i<L.portals.length;i++)refs[L.portals[i].to]={x:L.portals[i].x,y:L.portals[i].y};if(L.caveDown)refs.cave={x:L.caveDown.x,y:L.caveDown.y};for(i=0;i<G.npcs.length;i++)if(G.npcs[i].def&&G.npcs[i].def.action==='quest')refs.aldra={x:G.npcs[i].x,y:G.npcs[i].y};SITES.forEach(function(s){var r=refs[s.ref]||refs.aldra||{x:L.W*0.4,y:L.H*0.5};G.sitePos[s.id]=snapWalk(L,r.x+(s.dx||0),r.y+(s.dy||0));});syncSiteMarker();}
 function activeSite(){if(!G.flags||G.flags.story==null)return null;for(var i=0;i<SITES.length;i++){var s=SITES[i];if(s.chapter===G.flags.story&&!(G.flags.found&&G.flags.found[s.id]))return s;}return null;}
@@ -1624,7 +1596,7 @@ function enterLevel(key,opts){
   G.px=sp.x;G.py=sp.y;G.ang=facingOpen();
   if(opts.back){var ox=G.px+Math.cos(G.ang)*0.85,oy=G.py+Math.sin(G.ang)*0.85;if(!blockedAt(ox,oy)){G.px=ox;G.py=oy;}}
   G.bobY=0;G.bobPhase=0;G.shake=0;G.invuln=0.6;G.atkCd=0;G.abilCd=0;G.drawT=0;G.rollT=0;G.swing=0;G.castGlow=0;G.blockHeld=false;G.pz=0;G.vz=0;G.onGround=true;G.stairCd=1.4;G.ambT=0;G.wade=0;G.companions=[];G.combo=0;G.comboT=0;G.callout='';G.calloutT=0;
-  setMusic(def.music);if(typeof setAmbientArea==='function')setAmbientArea(def.area);G.mode=worldMode();G.objective=def.objective;setObjective(def.objective);if(typeof STORY!=='undefined'&&G.flags&&G.flags.story!=null&&STORY[G.flags.story]){G.objective=STORY[G.flags.story].o;setObjective('✦ '+G.objective);}
+  setMusic(def.music);if(typeof setAmbientArea==='function')setAmbientArea(def.area);G.mode=worldMode();G.objective=def.objective;setObjective(def.objective);if(typeof STORY!=='undefined'&&G.flags&&G.flags.story!=null&&STORY[G.flags.story]){G.objective=STORY[G.flags.story].o;setObjective(G.objective);}
   G.msgs=[];logMsg(def.intro,'#e8c24a');
   if(key==='world'&&!G.flags.tut){G.flags.tut=1;logMsg('WASD move · drag/mouse look · E interact · Space jump · V overhead · M map · ❓ help.','#56b85b');}
   if(def.boss)sfx.roar();else if(sfx.chime)sfx.chime();
@@ -1635,10 +1607,10 @@ function continueGame(){var s=loadSave();if(!s)return false;G.P=s.P;if(!G.P.gadg
 
 function startTransition(label,cb){if(G.transDir>0)return;G.transition=0.001;G.transDir=1;G.transLabel=label||'';G.transCb=cb;}
 /* ── story gate: enforce chapter order so you can't reach the Lich King first ── */
-function storyGate(to){var s=(G.flags&&G.flags.story!=null)?G.flags.story:0;
-  if(to==='cave'&&s<9)return 'The cold of the Hollow drives you back — your road is not yet walked. Heed the tale (press J): see the shops, the village, the Harbour first.';
-  if(to==='cave2'&&s<11)return 'The Deep Warren stays sealed to you. Press deeper into the Hollow Caves before seeking it.';
-  if(to==='lair'&&s<12)return 'An old ward bars the deep stair to the Throne. You must find the Deep Warren before the Lich King will face you.';
+function storyGate(to){
+  /* The world is open: stairs, caves and the deep stair are always walkable.
+     The 15-chapter tale (press J) is optional flavour layered on top of free
+     exploration — it no longer bars the way down. Delve whenever you dare. */
   return null;}
 /* helpers: is a descent / portal currently locked by the story? (used to HIDE it, not deny it) */
 function caveDownLocked(){var L=LEVELS[G.curKey];return !!(L&&L.linkDown&&storyGate(L.linkDown));}
@@ -1664,13 +1636,10 @@ function goalPos(){var L=G.level;if(!L)return null;var s=(G.flags&&G.flags.story
     var ce=nearestEnemy(G.px,G.py,999);if(ce)return {x:ce.x,y:ce.y};
     if(L.caveUp)return {x:L.caveUp.x,y:L.caveUp.y};
     return null;}
-  /* the overworld: follow the current chapter to a place you can actually reach */
+  /* the overworld: one direction only — first to Aldra, then down the cave mouth */
   if(G.curKey==='world'){
     if(s<=0||!G.flags||!G.flags.questMain){for(i=0;i<G.npcs.length;i++){n=G.npcs[i];if(n.def&&n.def.action==='quest')return {x:n.x,y:n.y};}}
-    var asi=(typeof activeSite==='function')?activeSite():null;if(asi&&G.sitePos&&G.sitePos[asi.id])return G.sitePos[asi.id];  // investigation chapter → the site to examine
-    if(s===11){pp=portalPos(L,'cave2');if(pp&&!storyGate('cave2'))return pp;}
-    if(s>=9&&L.caveDown&&!caveDownLocked())return {x:L.caveDown.x,y:L.caveDown.y};
-    var we=nearestEnemy(G.px,G.py,999);if(we)return {x:we.x,y:we.y};   // war chapters → nearest foe
+    if(L.caveDown)return {x:L.caveDown.x,y:L.caveDown.y};   // quest accepted → head for the cave
     return null;}
   if(G.curKey==='harbor'){
     var he=nearestEnemy(G.px,G.py,999);if(he)return {x:he.x,y:he.y};
@@ -1689,7 +1658,7 @@ var TUT=[
   {m:'TUTORIAL  ·  Follow the gold compass to the Captain (⚔) and press E to talk.',c:function(){return G._interacted;}}
 ];
 function startTutorial(){newGame('knight');G.tutOn=true;G.tutStep=0;G._moved=0;G._atk=false;G._jumped=false;G._viewed=false;G._interacted=false;setObjective(TUT[0].m);logMsg('Welcome! Follow the on-screen tutorial steps.','#56b85b');}
-function tickStory(){if(typeof STORY==='undefined'||!G.flags||G.flags.story==null)return;var i=G.flags.story;if(i>=STORY.length-1)return;var ch=STORY[i];if(ch&&ch.done&&ch.done()){G.flags.story=i+1;var n=STORY[i+1];G.objective=n.o;sfx.quest();syncSiteMarker();saveGame();showStoryCard(i+1);}}
+function tickStory(){if(typeof STORY==='undefined'||!G.flags||G.flags.story==null)return;var i=G.flags.story;if(i>=STORY.length-1)return;var ch=STORY[i];if(ch&&ch.done&&ch.done()){G.flags.story=i+1;var n=STORY[i+1];G.objective=n.o;setObjective(n.o);sfx.quest();syncSiteMarker();saveGame();showStoryCard(i+1);}}
 function tickTutorial(dt){if(!G.tutOn)return;var step=TUT[G.tutStep];if(step&&step.c()){G.tutStep++;sfx.quest();if(G.tutStep>=TUT.length){G.tutOn=false;logMsg('Tutorial complete — explore Vel-Anor!','#ffd24a');setObjective(G.objective);}else setObjective(TUT[G.tutStep].m);}}
 function floater(x,y,txt,col,life){G.particles.push({x:x,y:y,z:0.55,vx:0,vy:0,vz:0.5,life:life||0.8,max:life||0.8,txt:txt,color:col||'#fff',size:1});}
 function spawnBurst(x,y,col,n){for(var i=0;i<n;i++){var a=rnd(6.28),s=0.6+rnd(2.4);G.particles.push({x:x,y:y,z:0.3+rnd(0.4),vx:Math.cos(a)*s,vy:Math.sin(a)*s,vz:1+rnd(2),life:0.5+rnd(0.4),max:0.9,color:col,size:0.8+rnd(0.8)});}}
@@ -2453,7 +2422,7 @@ function showClassSelect(){G.mode='class';G.selCls=G.selCls||'knight';var cards=
 /* ── dialogue ── */
 function openDialogue(def){if(document.pointerLockElement&&document.exitPointerLock)document.exitPointerLock();G.dlg={def:def,i:0};G.mode='dialogue';$('dpor').textContent=def.por||'🙂';$('dwho').textContent=def.name;$('dchoices').innerHTML='';$('dcont').style.display='block';renderDialogueLine();$('dialogue').classList.add('show');setInteract(null);if(audioOK)sfx.blip();}
 function renderDialogueLine(){var d=G.dlg;$('dsay').textContent=d.def.lines[d.i]||'';}
-function advanceDialogue(){var d=G.dlg;if(!d)return;if(d.i<d.def.lines.length-1){d.i++;renderDialogueLine();if(audioOK)sfx.blip();return;}var a=d.def.action;if(a==='rest'){closeDialogue();restAtInn();}else if(a==='shop_smith'){closeDialogue();openShop('smith');}else if(a==='shop_arc'){closeDialogue();openShop('arc');}else if(a==='descend'){dialogueChoices([['Set out',function(){closeDialogue();descend();}],['Not yet',function(){closeDialogue();}]]);}else if(a==='quest'){var opts=[];if(G.flags.questMain<1)opts.push(['Accept: '+QUESTS.main.name,function(){G.flags.questMain=1;setObjective('Cross the lands and slay the Lich King.');logMsg('Quest accepted: '+QUESTS.main.name,'#ffd24a');sfx.quest();closeDialogue();}]);opts.push(['About the notice board',function(){closeDialogue();logMsg('A notice board stands in the square — odd jobs for coin and XP.','#cfd6df');}]);opts.push(['Leave',function(){closeDialogue();}]);dialogueChoices(opts);}else if(a==='tavern'){closeDialogue();buyAle();}else if(a==='study'){closeDialogue();studyAtLibrary();}else closeDialogue();}
+function advanceDialogue(){var d=G.dlg;if(!d)return;if(d.i<d.def.lines.length-1){d.i++;renderDialogueLine();if(audioOK)sfx.blip();return;}var a=d.def.action;if(a==='rest'){closeDialogue();restAtInn();}else if(a==='shop_smith'){closeDialogue();openShop('smith');}else if(a==='shop_arc'){closeDialogue();openShop('arc');}else if(a==='descend'){dialogueChoices([['Set out',function(){closeDialogue();descend();}],['Not yet',function(){closeDialogue();}]]);}else if(a==='quest'){var opts=[];if(G.flags.questMain<1)opts.push(['Accept: '+QUESTS.main.name,function(){G.flags.questMain=1;var nx=(typeof STORY!=='undefined'&&STORY[1])?STORY[1].o:'Cross the lands and slay the Lich King.';setObjective(nx);logMsg('Quest accepted: '+QUESTS.main.name,'#ffd24a');sfx.quest();closeDialogue();}]);opts.push(['About the notice board',function(){closeDialogue();logMsg('A notice board stands in the square — odd jobs for coin and XP.','#cfd6df');}]);opts.push(['Leave',function(){closeDialogue();}]);dialogueChoices(opts);}else if(a==='tavern'){closeDialogue();buyAle();}else if(a==='study'){closeDialogue();studyAtLibrary();}else closeDialogue();}
 function dialogueChoices(opts){$('dcont').style.display='none';var c=$('dchoices');c.innerHTML='';opts.forEach(function(o){c.appendChild(btn(o[0],o[1],'small'));});}
 function closeDialogue(){$('dialogue').classList.remove('show');$('dchoices').innerHTML='';G.dlg=null;G.mode=worldMode();}
 function restAtInn(){var P=G.P;P.hp=P.hpMax;P.mp=P.mpMax;P.sta=P.staMax;saveGame();sfx.heal();logMsg('You rest at the inn — fully restored, progress saved.','#56b85b');updateHUD();}
@@ -2557,7 +2526,7 @@ function showStoryCard(i){if(typeof STORY==='undefined'||!STORY[i])return;var ch
 function showJournal(){if(typeof STORY==='undefined')return;G.mode='pause';var cur=(G.flags&&G.flags.story!=null)?G.flags.story:0;var list=h('div',{style:'text-align:left;'});for(var i=0;i<STORY.length;i++){var done=i<cur,act=i===cur,c=STORY[i];list.appendChild(h('div',{style:'margin-bottom:7px;padding:8px 10px;border:1px solid '+(act?'#e8c24a':'#2c333f')+';border-radius:8px;background:'+(act?'rgba(232,194,74,.1)':'#1b2029')+';'},[h('div',{style:'font-weight:800;font-size:12px;color:'+(done?'#7fe07f':(act?'#e8c24a':'#6d7585'))+';',text:(done?'✓ ':(act?'▶ ':'• '))+c.t}),(act||done)?h('div',{style:'font-size:11px;color:#cfd6df;margin-top:3px;',text:c.o}):null]));}var pct=Math.round(cur/(STORY.length-1)*100);var prog=h('div',{style:'margin:2px 0 10px;'},[h('div',{style:'height:8px;border-radius:5px;background:#1b2029;border:1px solid #2c333f;overflow:hidden;'},[h('div',{style:'height:100%;width:'+pct+'%;background:linear-gradient(90deg,#b8902f,#e8c24a);'})]),h('div',{style:'font-size:10px;color:#8a93a0;margin-top:3px;text-align:right;',text:pct+'% — Chapter '+(Math.min(cur+1,STORY.length))+' of '+STORY.length})]);var box=h('div',{},[h('h2',{style:'color:#e8c24a;margin:0 0 6px;',text:'Story Journal'}),prog,h('div',{style:'max-height:56vh;overflow-y:auto;'},[list]),btn('Close',function(){resumeWorld();},'primary')]);openOverlay(box,'pause');}
 /* ── pause / options ── */
 function showPause(){G.mode='pause';var box=h('div',{},[h('h2',{style:'color:#e8c24a;margin:0 0 12px;',text:'Paused'}),h('div',{class:'menu-btns'},[btn('Resume',function(){resumeWorld();},'primary'),btn('Map',function(){showMap();}),btn('Story Journal',function(){showJournal();}),btn('Hero & Inventory',function(){openInventory();}),btn('Shop',function(){openShop('all');}),btn('Instructions',function(){showInstructions();}),btn('Options',function(){showOptions();}),btn('Quit to Title',function(){quitToTitle();},'danger')])]);openOverlay(box,'pause');}
-function showOptions(){G.mode='pause';var sens=h('input',{type:'range',min:'30',max:'200',value:String(Math.round((G.sens||1)*100)),style:'width:200px;'});sens.addEventListener('input',function(){G.sens=parseInt(sens.value,10)/100;});var vol=h('input',{type:'range',min:'0',max:'100',value:String(Math.round(G.volume*100)),style:'width:200px;'});vol.addEventListener('input',function(){setVolume(parseInt(vol.value,10)/100);});var box=h('div',{},[h('h2',{style:'color:#e8c24a;margin:0 0 12px;',text:'Options'}),h('div',{style:'display:flex;flex-direction:column;gap:12px;align-items:center;'},[h('div',{},[h('div',{style:'font-size:12px;color:#98a0ad;margin-bottom:4px;',text:'Turn / look sensitivity'}),sens]),h('div',{},[h('div',{style:'font-size:12px;color:#98a0ad;margin-bottom:4px;',text:'Volume'}),vol]),btn('Camera: '+(G.view==='fp'?'First-person':'Overhead'),function(){toggleView();showOptions();}),btn((G.muted?'Sound: Off':'Sound: On'),function(){setMuted(!G.muted);showOptions();}),btn('Graphics: '+(G.quality?'High':'Fast'),function(){G.quality=G.quality?0:1;NR=G.quality?BW:(BW>>1);G.zbuf=new Float32Array(NR);showOptions();}),btn('Touch controls: '+($('touch').classList.contains('hidden')?'Hidden':'Shown'),function(){G.touchPref=!G.touchPref;var t=$('touch');t.classList.toggle('hidden',!G.touchPref);t.classList.remove('autohide');showOptions();})]),btn('Back',function(){showPause();},'primary')]);openOverlay(box,'pause');}
+function showOptions(){G.mode='pause';var sens=h('input',{type:'range',min:'30',max:'200',value:String(Math.round((G.sens||1)*100)),style:'width:200px;'});sens.addEventListener('input',function(){G.sens=parseInt(sens.value,10)/100;});var vol=h('input',{type:'range',min:'0',max:'100',value:String(Math.round(G.volume*100)),style:'width:200px;'});vol.addEventListener('input',function(){setVolume(parseInt(vol.value,10)/100);});var box=h('div',{},[h('h2',{style:'color:#e8c24a;margin:0 0 12px;',text:'Options'}),h('div',{style:'display:flex;flex-direction:column;gap:12px;align-items:center;'},[h('div',{},[h('div',{style:'font-size:12px;color:#98a0ad;margin-bottom:4px;',text:'Turn / look sensitivity'}),sens]),h('div',{},[h('div',{style:'font-size:12px;color:#98a0ad;margin-bottom:4px;',text:'Volume'}),vol]),btn('Camera: '+(G.view==='fp'?'First-person':'Overhead'),function(){toggleView();showOptions();}),btn((G.muted?'Sound: Off':'Sound: On'),function(){setMuted(!G.muted);showOptions();}),btn((G.musicOff?'Music: Off':'Music: On'),function(){setMusicMuted(!G.musicOff);showOptions();}),btn('Graphics: '+(G.quality?'High':'Fast'),function(){G.quality=G.quality?0:1;NR=G.quality?BW:(BW>>1);G.zbuf=new Float32Array(NR);showOptions();}),btn('Touch controls: '+($('touch').classList.contains('hidden')?'Hidden':'Shown'),function(){G.touchPref=!G.touchPref;var t=$('touch');t.classList.toggle('hidden',!G.touchPref);t.classList.remove('autohide');showOptions();})]),btn('Back',function(){showPause();},'primary')]);openOverlay(box,'pause');}
 function quitToTitle(){setMusic('menu');showMenu();}
 
 /* ── end screens ── */
